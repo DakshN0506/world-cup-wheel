@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Cup 2026 — Random Team Wheel</title>
+<style>
+  :root {
+    --green-dark: #04401f;
+    --green: #0b6e2b;
+    --gold: #ffd400;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0 40px, transparent 40px 80px),
+      radial-gradient(circle at top, var(--green) 0%, var(--green-dark) 70%);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 60px;
+  }
+  h1 {
+    text-align: center;
+    font-size: clamp(22px, 4.5vw, 34px);
+    margin: 8px 0 2px;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+  .subtitle {
+    opacity: 0.85;
+    margin: 0 0 22px;
+    font-size: 14px;
+    text-align: center;
+  }
+  .wheel-wrapper {
+    position: relative;
+    width: min(90vw, 520px);
+    aspect-ratio: 1 / 1;
+    margin-bottom: 22px;
+    filter: drop-shadow(0 10px 25px rgba(0,0,0,0.45));
+  }
+  #wheel {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 50%;
+  }
+  .pointer {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 16px solid transparent;
+    border-right: 16px solid transparent;
+    border-top: 26px solid var(--gold);
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+    z-index: 5;
+  }
+  .hub {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16%;
+    height: 16%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle at 35% 30%, #fff, var(--gold) 60%, #c9a300 100%);
+    border-radius: 50%;
+    border: 3px solid #fff;
+    z-index: 4;
+  }
+  .controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  button {
+    font-family: inherit;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+  }
+  #spinBtn {
+    font-size: 20px;
+    padding: 14px 46px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--gold), #e0ad00);
+    color: #20330b;
+    box-shadow: 0 6px 0 #8a6f00, 0 10px 18px rgba(0,0,0,0.4);
+    transition: transform 0.08s ease;
+  }
+  #spinBtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #8a6f00; }
+  #spinBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+  }
+  #resetBtn {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    border: 1px solid rgba(255,255,255,0.35);
+  }
+  #resetBtn:hover { background: rgba(255,255,255,0.22); }
+  #count {
+    font-size: 13px;
+    opacity: 0.85;
+  }
+  #resultBanner {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 20, 8, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+  }
+  #resultBanner[hidden] { display: none; }
+  .card {
+    background: linear-gradient(160deg, #ffffff, #eef3ea);
+    color: #18331a;
+    border-radius: 20px;
+    padding: 36px 44px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    animation: pop 0.35s ease;
+    max-width: 90vw;
+  }
+  @keyframes pop {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .card .label {
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.6;
+    margin-bottom: 6px;
+  }
+  .card .flag {
+    width: 130px;
+    max-width: 60vw;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    margin-bottom: 14px;
+  }
+  .card .name {
+    font-size: clamp(24px, 6vw, 38px);
+    font-weight: 800;
+    margin-bottom: 18px;
+  }
+  .card button {
+    background: var(--green);
+    color: #fff;
+    padding: 10px 26px;
+    border-radius: 999px;
+    font-size: 15px;
+  }
+  .card button:hover { background: #0a5a24; }
+  details {
+    margin-top: 28px;
+    width: min(90vw, 520px);
+    background: rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 10px 16px;
+  }
+  summary {
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  #teamList {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 6px 10px;
+    margin-top: 10px;
+    font-size: 13px;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  #teamList div {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .flag-icon {
+    width: 20px;
+    height: 14px;
+    object-fit: cover;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .confetti {
+    position: fixed;
+    top: -12px;
+    width: 8px;
+    height: 14px;
+    opacity: 0.9;
+    z-index: 60;
+    animation: confetti-fall linear forwards;
+  }
+  @keyframes confetti-fall {
+    to { transform: translateY(108vh) rotate(360deg); opacity: 0.4; }
+  }
+  .visually-hidden {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  footer {
+    margin-top: 30px;
+    font-size: 12px;
+    opacity: 0.6;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>🏆 World Cup 2026 Team Wheel</h1>
+<p class="subtitle">Spin to pick a random team from all 48 nations at the 2026 World Cup</p>
+
+<div class="wheel-wrapper">
+  <div class="pointer"></div>
+  <canvas id="wheel" width="800" height="800"></canvas>
+  <div class="hub"></div>
+</div>
+
+<div class="controls">
+  <button id="spinBtn">SPIN</button>
+  <div class="row">
+    <label><input type="checkbox" id="removeToggle" checked> Remove team after it's picked (no repeats)</label>
+  </div>
+  <div class="row">
+    <button id="resetBtn">Reset wheel</button>
+    <span id="count"></span>
+  </div>
+</div>
+
+<details>
+  <summary>Show all teams currently on the wheel</summary>
+  <div id="teamList"></div>
+</details>
+
+<footer>All 48 qualified nations for the 2026 FIFA World Cup (Canada · Mexico · USA)</footer>
+
+<div id="resultBanner" hidden>
+  <div class="card">
+    <div class="label">The wheel landed on</div>
+    <img class="flag" id="resultFlag" alt="">
+    <div class="name" id="resultName"></div>
+    <button id="closeResult">Nice!</button>
+  </div>
+</div>
+
+<span class="visually-hidden" id="liveRegion" aria-live="polite"></span>
+
+<script>
+const ALL_TEAMS = [
+  { name: "Canada", code: "ca" },
+  { name: "Mexico", code: "mx" },
+  { name: "United States", code: "us" },
+  { name: "Australia", code: "au" },
+  { name: "Iraq", code: "iq" },
+  { name: "Iran", code: "ir" },
+  { name: "Japan", code: "jp" },
+  { name: "Jordan", code: "jo" },
+  { name: "South Korea", code: "kr" },
+  { name: "Qatar", code: "qa" },
+  { name: "Saudi Arabia", code: "sa" },
+  { name: "Uzbekistan", code: "uz" },
+  { name: "Algeria", code: "dz" },
+  { name: "Cabo Verde", code: "cv" },
+  { name: "DR Congo", code: "cd" },
+  { name: "Côte d'Ivoire", code: "ci" },
+  { name: "Egypt", code: "eg" },
+  { name: "Ghana", code: "gh" },
+  { name: "Morocco", code: "ma" },
+  { name: "Senegal", code: "sn" },
+  { name: "South Africa", code: "za" },
+  { name: "Tunisia", code: "tn" },
+  { name: "Curaçao", code: "cw" },
+  { name: "Haiti", code: "ht" },
+  { name: "Panama", code: "pa" },
+  { name: "Argentina", code: "ar" },
+  { name: "Brazil", code: "br" },
+  { name: "Colombia", code: "co" },
+  { name: "Ecuador", code: "ec" },
+  { name: "Paraguay", code: "py" },
+  { name: "Uruguay", code: "uy" },
+  { name: "New Zealand", code: "nz" },
+  { name: "Austria", code: "at" },
+  { name: "Belgium", code: "be" },
+  { name: "Bosnia and Herzegovina", code: "ba" },
+  { name: "Croatia", code: "hr" },
+  { name: "Czechia", code: "cz" },
+  { name: "England", code: "gb-eng" },
+  { name: "France", code: "fr" },
+  { name: "Germany", code: "de" },
+  { name: "Netherlands", code: "nl" },
+  { name: "Norway", code: "no" },
+  { name: "Portugal", code: "pt" },
+  { name: "Scotland", code: "gb-sct" },
+  { name: "Spain", code: "es" },
+  { name: "Sweden", code: "se" },
+  { name: "Switzerland", code: "ch" },
+  { name: "Türkiye", code: "tr" }
+];
+
+function flagUrl(code, width) {
+  return `https://flagcdn.com/w${width}/${code}.png`;
+}
+
+const flagImages = {};
+function preloadFlags() {
+  const uniqueCodes = [...new Set(ALL_TEAMS.map(t => t.code))];
+  return Promise.all(uniqueCodes.map(code => new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => { flagImages[code] = img; resolve(); };
+    img.onerror = () => resolve();
+    img.src = flagUrl(code, 80);
+  })));
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+let teams = shuffle(ALL_TEAMS);
+let rotation = 0;
+let spinning = false;
+
+const canvas = document.getElementById('wheel');
+const ctx = canvas.getContext('2d');
+const SIZE = canvas.width;
+const CENTER = SIZE / 2;
+const RADIUS = SIZE / 2 - 6;
+
+const spinBtn = document.getElementById('spinBtn');
+const resetBtn = document.getElementById('resetBtn');
+const removeToggle = document.getElementById('removeToggle');
+const countEl = document.getElementById('count');
+const teamListEl = document.getElementById('teamList');
+const resultBanner = document.getElementById('resultBanner');
+const resultFlag = document.getElementById('resultFlag');
+const resultName = document.getElementById('resultName');
+const closeResult = document.getElementById('closeResult');
+const liveRegion = document.getElementById('liveRegion');
+
+function drawWheel() {
+  const n = teams.length;
+  ctx.clearRect(0, 0, SIZE, SIZE);
+  if (n === 0) return;
+
+  const segAngle = (2 * Math.PI) / n;
+  const offset = -Math.PI / 2;
+  const flagW = n > 32 ? 42 : n > 16 ? 54 : 70;
+  const flagH = flagW * 0.7;
+
+  for (let i = 0; i < n; i++) {
+    const start = offset + i * segAngle;
+    const end = start + segAngle;
+    ctx.beginPath();
+    ctx.moveTo(CENTER, CENTER);
+    ctx.arc(CENTER, CENTER, RADIUS, start, end);
+    ctx.closePath();
+    const hue = Math.round((i * 360) / n);
+    ctx.fillStyle = `hsl(${hue} ${i % 2 === 0 ? 72 : 60}% ${i % 2 === 0 ? 48 : 40}%)`;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const img = flagImages[teams[i].code];
+    if (img) {
+      ctx.save();
+      ctx.translate(CENTER, CENTER);
+      ctx.rotate(start + segAngle / 2);
+      ctx.shadowColor = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur = 4;
+      ctx.drawImage(img, RADIUS - 26 - flagW, -flagH / 2, flagW, flagH);
+      ctx.restore();
+    }
+  }
+
+  ctx.beginPath();
+  ctx.arc(CENTER, CENTER, RADIUS, 0, 2 * Math.PI);
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = '#ffffff';
+  ctx.stroke();
+}
+
+function renderTeamList() {
+  teamListEl.innerHTML = teams
+    .map(t => `<div><img class="flag-icon" src="${flagUrl(t.code, 40)}" alt=""> ${t.name}</div>`)
+    .join('');
+  countEl.textContent = `${teams.length} team${teams.length !== 1 ? 's' : ''} remaining`;
+}
+
+function launchConfetti() {
+  const colors = ['#ffd400', '#ffffff', '#0b6e2b', '#ff6b6b', '#4dabf7'];
+  for (let i = 0; i < 70; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.background = colors[Math.floor(Math.random() * colors.length)];
+    c.style.animationDuration = (2 + Math.random() * 1.5) + 's';
+    c.style.transform = `rotate(${Math.random() * 360}deg)`;
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 3700);
+  }
+}
+
+function spin() {
+  if (spinning || teams.length === 0) return;
+  spinning = true;
+  spinBtn.disabled = true;
+
+  const n = teams.length;
+  const fullSpins = 5 + Math.floor(Math.random() * 3);
+  const randomAngle = Math.random() * 360;
+  rotation += fullSpins * 360 + randomAngle;
+
+  canvas.style.transition = 'transform 4.2s cubic-bezier(0.13, 0.71, 0.13, 1)';
+  canvas.style.transform = `rotate(${rotation}deg)`;
+}
+
+canvas.addEventListener('transitionend', () => {
+  if (!spinning) return;
+  spinning = false;
+  spinBtn.disabled = false;
+
+  const n = teams.length;
+  const segAngle = 360 / n;
+  const normalized = ((rotation % 360) + 360) % 360;
+  const pointerAngle = (360 - normalized) % 360;
+  const idx = Math.min(n - 1, Math.floor(pointerAngle / segAngle));
+  showResult(idx);
+});
+
+function showResult(idx) {
+  const team = teams[idx];
+  resultFlag.src = flagUrl(team.code, 160);
+  resultFlag.alt = team.name + ' flag';
+  resultName.textContent = team.name;
+  resultBanner.hidden = false;
+  liveRegion.textContent = `Winner: ${team.name}`;
+  launchConfetti();
+
+  if (removeToggle.checked) {
+    teams.splice(idx, 1);
+    rotation = 0;
+    canvas.style.transition = 'none';
+    canvas.style.transform = 'rotate(0deg)';
+    void canvas.offsetHeight;
+    drawWheel();
+    renderTeamList();
+    if (teams.length === 0) {
+      spinBtn.disabled = true;
+      spinBtn.textContent = 'ALL PICKED';
+    }
+  }
+}
+
+closeResult.addEventListener('click', () => {
+  resultBanner.hidden = true;
+});
+
+resetBtn.addEventListener('click', () => {
+  teams = shuffle(ALL_TEAMS);
+  rotation = 0;
+  canvas.style.transition = 'none';
+  canvas.style.transform = 'rotate(0deg)';
+  void canvas.offsetHeight;
+  spinBtn.disabled = false;
+  spinBtn.textContent = 'SPIN';
+  resultBanner.hidden = true;
+  drawWheel();
+  renderTeamList();
+});
+
+spinBtn.addEventListener('click', spin);
+
+spinBtn.disabled = true;
+spinBtn.textContent = 'LOADING…';
+renderTeamList();
+preloadFlags().then(() => {
+  spinBtn.disabled = false;
+  spinBtn.textContent = 'SPIN';
+  drawWheel();
+});
+</script>
+</body>
+</html>
